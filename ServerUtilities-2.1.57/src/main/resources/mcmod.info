@@ -1,0 +1,23 @@
+{
+  "modListVersion": 2,
+  "modList": [
+    {
+      "modid": "serverutilities",
+      "name": "ServerUtilities",
+      "description": "Server Utilities",
+      "version": "${modVersion}",
+      "mcversion": "${minecraftVersion}",
+      "url": "https://github.com/GTNewHorizons/ServerUtilities",
+      "updateUrl": "",
+      "authorList": [
+        "LatvianModder",
+        "mitchej123",
+        "GTNH Team"
+      ],
+      "credits": "GTNH",
+      "logoFile": "",
+      "screenshots": [],
+      "parent": ""
+    }
+  ]
+}
