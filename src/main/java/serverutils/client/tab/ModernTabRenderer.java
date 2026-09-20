@@ -24,6 +24,7 @@ import org.lwjgl.opengl.GL11;
 
 import serverutils.ServerUtilitiesConfig;
 import serverutils.client.gui.misc.GuiPlayerInfoWrapper;
+import serverutils.lib.util.MOTDFormatter;
 import serverutils.lib.util.StringUtils;
 
 public class ModernTabRenderer {
@@ -136,8 +137,8 @@ public class ModernTabRenderer {
         int gridLeft = (screenWidth - (columnWidth * columns + (columns - 1) * 5)) / 2;
         int startY = 10;
 
-        String headerText = resolveHeaderFooter(true);
-        String footerText = resolveHeaderFooter(false);
+        String headerText = resolveHeaderFooter(true, playerCount);
+        String footerText = resolveHeaderFooter(false, playerCount);
 
         List<String> headerLines = wrapText(font, headerText, screenWidth - 50);
         List<String> footerLines = wrapText(font, footerText, screenWidth - 50);
@@ -279,16 +280,22 @@ public class ModernTabRenderer {
         return ScorePlayerTeam.formatPlayerName(team, player.name);
     }
 
-    private static String resolveHeaderFooter(boolean isHeader) {
+    private static String resolveHeaderFooter(boolean isHeader, int playerCount) {
         String text;
         TabChannelHandler ch = TabChannelHandler.INSTANCE;
         if (ch.hasServerData()) {
             text = isHeader ? ch.getHeader() : ch.getFooter();
         } else {
             text = isHeader ? ServerUtilitiesConfig.tab.headerText : ServerUtilitiesConfig.tab.footerText;
+            text = resolveTabVariables(text, playerCount);
         }
         if (text == null || text.isEmpty()) return "";
         return StringUtils.addFormatting(text.replace("\\n", "\n"));
+    }
+
+    private static String resolveTabVariables(String text, int playerCount) {
+        if (!MOTDFormatter.containsVariables(text)) return text == null ? "" : text;
+        return MOTDFormatter.formatClient(text, playerCount);
     }
 
     private static List<String> wrapText(FontRenderer font, String text, int maxWidth) {

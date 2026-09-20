@@ -834,12 +834,12 @@ public class ServerUtilitiesConfig {
         @Config.Sync
         public boolean showPingBars;
 
-        @Config.Comment("Header text for the modern tab overlay. Use & for color/format codes, \\n for line breaks. Overridden by proxy plugin channel.")
+        @Config.Comment("Header text for the modern tab overlay. Use & for color/format codes, \\n for line breaks. Supports MOTD variables ({players}, {maxPlayers}, {tps}, {memory}, {uptime}). Overridden by proxy plugin channel.")
         @Config.DefaultString("&b&lGTNH Server\\n&7A modern tab list for 1.7.10")
         @Config.Sync
         public String headerText;
 
-        @Config.Comment("Footer text for the modern tab overlay. Use & for color/format codes, \\n for line breaks. Overridden by proxy plugin channel.")
+        @Config.Comment("Footer text for the modern tab overlay. Use & for color/format codes, \\n for line breaks. Supports MOTD variables ({players}, {maxPlayers}, {tps}, {memory}, {uptime}). Overridden by proxy plugin channel.")
         @Config.DefaultString("&7Ping: &a< 150ms &e< 300ms &c< 600ms &4< 1000ms &8>= 1000ms\\n&8Powered by &dServerUtilities")
         @Config.Sync
         public String footerText;

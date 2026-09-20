@@ -52,6 +52,7 @@ import serverutils.lib.util.permission.PermissionAPI;
 import serverutils.lib.util.text_components.TextComponentParser;
 import serverutils.net.MessageUpdatePlayTime;
 import serverutils.net.MessageUpdateTabName;
+import serverutils.net.TabHeaderFooterSync;
 import serverutils.pregenerator.ChunkLoaderManager;
 import serverutils.ranks.Ranks;
 import serverutils.task.backup.BackupTask;
@@ -240,6 +241,8 @@ public class ServerUtilitiesServerEventHandler {
                 ClaimedChunks.instance.update(universe, now);
             }
         } else {
+            TabHeaderFooterSync.onServerTick(universe.server);
+
             EntityPlayerMP playerToKickForAfk = null; // Do one at time, easier
             boolean afkEnabled = ServerUtilitiesConfig.afk.isEnabled(universe.server);
 
