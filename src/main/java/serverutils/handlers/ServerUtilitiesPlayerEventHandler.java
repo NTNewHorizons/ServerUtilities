@@ -59,6 +59,7 @@ public class ServerUtilitiesPlayerEventHandler {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onPlayerLoggedIn(ForgePlayerLoggedInEvent event) {
+        BackupTask.newPlayerActivity();
         EntityPlayerMP player = event.getPlayer().getPlayer();
 
         if (ServerUtils.isFirstLogin(player, "serverutilities_starting_items")) {
@@ -88,16 +89,17 @@ public class ServerUtilitiesPlayerEventHandler {
         }
 
         if (ServerUtilitiesConfig.chat.replace_tab_names) {
-            new MessageUpdateTabName(Universe.get().getOnlinePlayers()).sendTo(player);
+            MessageUpdateTabName.sendOnlinePlayersTo(player);
         }
 
         TabHeaderFooterSync.sendToPlayer(player);
 
-        BackupTask.hadPlayer = true;
+        TabProfileTracker.sendAllTo(player.mcServer, player);
     }
 
     @SubscribeEvent
     public static void onPlayerLoggedOut(ForgePlayerLoggedOutEvent event) {
+        BackupTask.newPlayerActivity();
         EntityPlayerMP player = event.getPlayer().getPlayer();
 
         if (ClaimedChunks.isActive()) {
@@ -105,6 +107,7 @@ public class ServerUtilitiesPlayerEventHandler {
         }
 
         player.getEntityData().removeTag(ServerUtilitiesPlayerData.TAG_LAST_CHUNK);
+        TabProfileTracker.remove(player.getUniqueID());
     }
 
     @SubscribeEvent

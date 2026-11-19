@@ -31,6 +31,7 @@ public class ServerUtilitiesNetHandler {
         GENERAL.register(new MessageAdminTeamPlayerList());
         GENERAL.register(new MessageAdminTeamClaimsList());
         GENERAL.register(new MessageTabHeaderFooter());
+        GENERAL.register(new MessageTabProfiles());
 
         CLAIMS.register(new MessageClaimedChunksRequest());
         CLAIMS.register(new MessageClaimedChunksUpdate());

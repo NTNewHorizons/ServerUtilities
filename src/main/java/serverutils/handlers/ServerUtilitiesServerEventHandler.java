@@ -55,7 +55,7 @@ import serverutils.net.MessageUpdateTabName;
 import serverutils.net.TabHeaderFooterSync;
 import serverutils.pregenerator.ChunkLoaderManager;
 import serverutils.ranks.Ranks;
-import serverutils.task.backup.BackupTask;
+import serverutils.task.backup.BackupRoutine;
 
 @EventBusSubscriber
 public class ServerUtilitiesServerEventHandler {
@@ -81,7 +81,7 @@ public class ServerUtilitiesServerEventHandler {
 
     @SubscribeEvent
     public static void loadWorldEvent(WorldEvent.Load event) {
-        if (event.world instanceof WorldServer world) BackupTask.suspendNewWorldSaving(world);
+        if (event.world instanceof WorldServer world) BackupRoutine.suspendLoadedWorld(world);
         if (ServerUtilitiesConfig.world.enable_player_sleeping_percentage) {
             if (!event.world.isRemote && !event.world.getGameRules().hasRule("playersSleepingPercentage")) {
                 event.world.getGameRules().addGameRule(
@@ -93,7 +93,7 @@ public class ServerUtilitiesServerEventHandler {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onBackupSaveCommand(CommandEvent event) {
-        if (BackupTask.isWorldSavingSuspended()
+        if (BackupRoutine.isWorldSavingSuspended()
                 && (event.command instanceof CommandSaveAll || event.command instanceof CommandSaveOn
                         || event.command instanceof CommandSaveOff)) {
             event.setCanceled(true);
@@ -242,6 +242,7 @@ public class ServerUtilitiesServerEventHandler {
             }
         } else {
             TabHeaderFooterSync.onServerTick(universe.server);
+            TabProfileTracker.tick(universe.server);
 
             EntityPlayerMP playerToKickForAfk = null; // Do one at time, easier
             boolean afkEnabled = ServerUtilitiesConfig.afk.isEnabled(universe.server);
@@ -275,7 +276,7 @@ public class ServerUtilitiesServerEventHandler {
 
                     if (prevIsAfk != isAFK) {
                         if (ServerUtilitiesConfig.chat.replace_tab_names) {
-                            new MessageUpdateTabName(Collections.singleton(forgePlayer)).sendToAll();
+                            new MessageUpdateTabName(Collections.singleton(forgePlayer)).sendToViewers(forgePlayer);
                         }
 
                         if (!forgePlayer.isVanished()) {

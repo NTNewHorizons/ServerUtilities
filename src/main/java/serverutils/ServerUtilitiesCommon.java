@@ -37,6 +37,7 @@ import serverutils.command.ServerUtilitiesCommands;
 import serverutils.data.ServerUtilitiesLoadedChunkManager;
 import serverutils.events.ServerReloadEvent;
 import serverutils.handlers.ServerUtilitiesServerEventHandler;
+import serverutils.handlers.TabProfileTracker;
 import serverutils.lib.OtherMods;
 import serverutils.lib.config.ConfigGroup;
 import serverutils.lib.config.IConfigCallback;
@@ -52,7 +53,10 @@ import serverutils.ranks.ServerUtilitiesPermissionHandler;
 import serverutils.task.CleanupTask;
 import serverutils.task.DecayTask;
 import serverutils.task.ShutdownTask;
+import serverutils.task.backup.BackupCoordinator;
+import serverutils.task.backup.BackupRoutine;
 import serverutils.task.backup.BackupTask;
+import serverutils.task.backup.RetentionRoutine;
 
 public class ServerUtilitiesCommon {
 
@@ -116,7 +120,18 @@ public class ServerUtilitiesCommon {
 
     public void onServerAboutToStart(FMLServerAboutToStartEvent event) {
         ServerUtilitiesServerEventHandler.clearServerTasks();
-        BackupTask.stopBackupThread();
+        // Request for any in-progress backups to stop, but only perform deletion IF we confirmed everything was stopped
+        // successfully including previous runs from other worlds
+        if (BackupCoordinator.stop()) {
+            RetentionRoutine.deleteAbandonedArchives(BackupRoutine.getDefaultBackupFolder());
+            BackupRoutine.deleteAbandonedTempFolders();
+        }
+        // Start cleanup with the server, so background scans cannot race the title-screen restore GUI.
+        BackupCoordinator.execute(RetentionRoutine.fromConfig(), RetentionRoutine::prune).exceptionally(t -> {
+            ServerUtilities.LOGGER.error("Retention prune failed", t);
+            return null;
+        });
+
         Universe.onServerAboutToStart(event);
         MinecraftForge.EVENT_BUS.register(Universe.get());
         FMLCommonHandler.instance().bus().register(Universe.get());
@@ -160,7 +175,7 @@ public class ServerUtilitiesCommon {
     }
 
     public void onServerStopping(FMLServerStoppingEvent event) {
-        BackupTask.stopBackupThread();
+        BackupCoordinator.stop();
         // Save the universe since onServerStopping clears the instance variable
         Universe oldUniverse = Universe.get();
         Universe.onServerStopping(event);
@@ -168,13 +183,23 @@ public class ServerUtilitiesCommon {
         MinecraftForge.EVENT_BUS.unregister(oldUniverse);
         FMLCommonHandler.instance().bus().unregister(oldUniverse);
         ServerUtilitiesServerEventHandler.clearServerTasks();
+        TabProfileTracker.clear();
     }
 
     public void registerTasks() {
         Universe universe = Universe.get();
         universe.scheduleTask(new DecayTask(), world.chunk_claiming);
         universe.scheduleTask(new CleanupTask(), tasks.cleanup.enabled);
-        universe.scheduleTask(new BackupTask(), backups.enable_backups);
+        if (backups.enable_backups) {
+            try {
+                universe.scheduleTask(new BackupTask());
+            } catch (IllegalArgumentException ex) {
+                ServerUtilities.LOGGER.error(
+                        "Automatic backups disabled: invalid backup_timer '{}': {}",
+                        backups.backup_timer,
+                        ex.getMessage());
+            }
+        }
         if (auto_shutdown.enabled && auto_shutdown.times.length > 0
                 && (auto_shutdown.enabled_singleplayer || universe.server.isDedicatedServer())) {
             universe.scheduleTask(new ShutdownTask());

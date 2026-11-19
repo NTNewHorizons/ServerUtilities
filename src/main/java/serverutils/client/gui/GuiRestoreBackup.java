@@ -7,19 +7,21 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import net.minecraft.client.Minecraft;
@@ -40,7 +42,6 @@ import cpw.mods.fml.relauncher.Side;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import serverutils.ServerUtilities;
 import serverutils.ServerUtilitiesConfig;
 import serverutils.lib.gui.Button;
@@ -56,14 +57,13 @@ import serverutils.lib.icon.Icon;
 import serverutils.lib.util.FileUtils;
 import serverutils.lib.util.compression.ICompress;
 import serverutils.lib.util.misc.MouseButton;
-import serverutils.task.backup.BackupTask;
-import serverutils.task.backup.ThreadBackup;
+import serverutils.task.backup.BackupRoutine;
 
 @EventBusSubscriber(side = Side.CLIENT)
 public class GuiRestoreBackup extends GuiButtonListBase {
 
-    private static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
-    private static final Set<File> allBackupFiles = new ObjectOpenHashSet<>();
+    private static final DateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.ROOT);
+    private static final Map<File, BasicFileAttributes> allBackupFiles = new Object2ObjectOpenHashMap<>();
     private static Object2ObjectMap<String, List<File>> worldBackups;
     private final List<File> backupFiles;
     private final String title;
@@ -142,19 +142,36 @@ public class GuiRestoreBackup extends GuiButtonListBase {
     }
 
     private static boolean needsRefresh() {
-        File[] files = BackupTask.BACKUP_FOLDER.listFiles();
-        if (files == null) return false;
-        return !allBackupFiles.containsAll(Arrays.asList(files));
+        File[] files = BackupRoutine.getDefaultBackupFolder().listFiles();
+        // A missing folder must still clear backups cached from before it disappeared.
+        if (files == null) return !allBackupFiles.isEmpty();
+        if (files.length != allBackupFiles.size()) return true;
+        for (File file : files) {
+            BasicFileAttributes previous = allBackupFiles.get(file);
+            if (previous == null) return true;
+            try {
+                BasicFileAttributes current = Files
+                        .readAttributes(file.toPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+                if (current.size() != previous.size() || !current.lastModifiedTime().equals(previous.lastModifiedTime())
+                        || !Objects.equals(current.fileKey(), previous.fileKey()))
+                    return true;
+            } catch (IOException e) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void preProcess() {
-        File[] files = BackupTask.BACKUP_FOLDER.listFiles();
+        File[] files = BackupRoutine.getDefaultBackupFolder().listFiles();
         if (files == null) return;
 
         ICompress compressor = ICompress.createCompressor();
         for (File file : files) {
-            allBackupFiles.add(file);
             try {
+                allBackupFiles.put(
+                        file,
+                        Files.readAttributes(file.toPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS));
                 String worldName = compressor.getWorldName(file);
                 if (worldName == null) continue;
                 worldBackups.computeIfAbsent(worldName, k -> new ObjectArrayList<>()).add(file);
@@ -232,6 +249,8 @@ public class GuiRestoreBackup extends GuiButtonListBase {
         Path recoveryPath = FileUtils.resolveRealPath(previousRoot.getParentFile().toPath());
         Path preservedWorldPath = FileUtils.resolveRealPath(preservedWorld.toPath());
         Path recoveryStorage = FileUtils.resolveRealPath(Paths.get("backups_before_restore"));
+        Path tempStorage = FileUtils.resolveRealPath(BackupRoutine.BACKUP_TEMP_FOLDER.toPath());
+        Path backupStorage = FileUtils.resolveRealPath(BackupRoutine.getDefaultBackupFolder().toPath());
         for (String pattern : backups.additional_backup_files) {
             if (!pattern.contains("$WORLDNAME") && !includeGlobal) {
                 continue;
@@ -268,7 +287,8 @@ public class GuiRestoreBackup extends GuiButtonListBase {
                 if (path.equals(archivePath) || path.startsWith(recoveryPath)
                         || path.startsWith(preservedWorldPath)
                         || path.startsWith(recoveryStorage)
-                        || ThreadBackup.isBackupStorage(file))
+                        || path.startsWith(tempStorage)
+                        || path.startsWith(backupStorage))
                     continue;
                 String pathRelative = FileUtils.getRelativePath(file);
                 File destFile = new File(previousRoot, pathRelative);
