@@ -2,6 +2,9 @@ package serverutils.mixins.early.minecraft.vanish;
 
 import static serverutils.ServerUtilitiesPermissions.SEE_VANISH;
 
+import java.util.List;
+
+import net.minecraft.command.ICommandSender;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.network.NetHandlerPlayServer;
@@ -23,6 +26,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 
 import serverutils.data.ServerUtilitiesPlayerData;
@@ -137,6 +142,22 @@ public abstract class MixinNetHandlerPlayServer {
             }
         }
         return true;
+    }
+
+    @WrapOperation(
+            method = "processTabComplete",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/server/MinecraftServer;getPossibleCompletions(Lnet/minecraft/command/ICommandSender;Ljava/lang/String;)Ljava/util/List;"))
+    private List<String> serverutilities$trackTabCompletingPlayer(MinecraftServer instance, ICommandSender sender,
+            String text, Operation<List<String>> original) {
+        EntityPlayerMP previous = ServerUtils.tabCompletingPlayer;
+        ServerUtils.tabCompletingPlayer = playerEntity;
+        try {
+            return original.call(instance, sender, text);
+        } finally {
+            ServerUtils.tabCompletingPlayer = previous;
+        }
     }
 
     @Unique

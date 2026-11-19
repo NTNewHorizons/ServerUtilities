@@ -96,8 +96,12 @@ public abstract class MixinServerConfigurationManager {
                     value = "INVOKE",
                     target = "Lnet/minecraft/entity/player/EntityPlayerMP;getCommandSenderName()Ljava/lang/String;"))
     private String serverutilities$removeVanished(EntityPlayerMP player) {
-        if (ServerUtils.isVanished(player)) return "";
-        return player.getCommandSenderName();
+        if (!ServerUtils.isVanished(player)) return player.getCommandSenderName();
+        EntityPlayerMP requester = ServerUtils.tabCompletingPlayer;
+        if (requester != null && (requester == player || PermissionAPI.hasPermission(requester, SEE_VANISH))) {
+            return player.getCommandSenderName();
+        }
+        return "";
     }
 
     @Unique

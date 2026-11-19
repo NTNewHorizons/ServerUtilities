@@ -30,6 +30,13 @@ public class ServerUtils {
             StringUtils.fromString("069be1413c1b45c3b3b160d3f9fcd236"),
             "FakeForgePlayer");
 
+    /**
+     * The player currently requesting tab completions, set only while the server processes a tab complete packet. Used
+     * to keep a vanished player's own name in their completions. Server thread only.
+     */
+    @Nullable
+    public static EntityPlayerMP tabCompletingPlayer;
+
     public static IChatComponent getDimensionName(int dim) {
         return switch (dim) {
             case 0 -> new ChatComponentTranslation("serverutilities.world.dimension.overworld");
