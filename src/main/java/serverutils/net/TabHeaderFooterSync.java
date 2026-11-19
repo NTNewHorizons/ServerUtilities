@@ -31,9 +31,8 @@ public class TabHeaderFooterSync {
         }
         tickCounter = 0;
         wasVariable = true;
-        new MessageTabHeaderFooter(
-                MOTDFormatter.format(rawHeader, server),
-                MOTDFormatter.format(rawFooter, server)).sendToAll();
+        new MessageTabHeaderFooter(MOTDFormatter.format(rawHeader, server), MOTDFormatter.format(rawFooter, server))
+                .sendToAll();
     }
 
     public static void sendToPlayer(EntityPlayerMP player) {
