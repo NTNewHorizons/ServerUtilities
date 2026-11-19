@@ -29,8 +29,8 @@ public class ServerUtils {
             "FakeForgePlayer");
 
     /**
-     * The player currently requesting tab completions, set only while the server processes a tab complete packet.
-     * Used to keep a vanished player's own name in their completions. Server thread only.
+     * The player currently requesting tab completions, set only while the server processes a tab complete packet. Used
+     * to keep a vanished player's own name in their completions. Server thread only.
      */
     @Nullable
     public static EntityPlayerMP tabCompletingPlayer;
