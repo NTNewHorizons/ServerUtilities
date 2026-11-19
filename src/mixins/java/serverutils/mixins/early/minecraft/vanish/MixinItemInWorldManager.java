@@ -30,16 +30,17 @@ public abstract class MixinItemInWorldManager {
             EntityPlayer player, int side, float subX, float subY, float subZ, Operation<Boolean> original) {
         if (ServerUtils.isVanished(player)) {
             EntityPlayerMP playerMP = (EntityPlayerMP) player;
+            VanishData data = ServerUtilitiesPlayerData.get(playerMP).getVanishData();
             if (instance instanceof BlockContainer) {
                 boolean result = original.call(instance, worldIn, x, y, z, player, side, subX, subY, subZ);
                 // gives read-only access to the container and doesn't show it as open for other players
-                VanishData data = ServerUtilitiesPlayerData.get(playerMP).getVanishData();
-                if (result && data.containerReadOnly) {
+                // without interaction, containers are always read-only
+                if (result && (data.containerReadOnly || !data.interaction)) {
                     playerMP.closeContainer();
                 }
                 return result;
             }
-            return false;
+            if (!data.interaction) return false;
         }
 
         return original.call(instance, worldIn, x, y, z, player, side, subX, subY, subZ);
